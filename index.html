@@ -58,7 +58,7 @@ body{font-family:"Poor Story",cursive;min-height:100vh;display:flex;flex-directi
 .app-header h1{font-size:clamp(22px,4vw,32px);text-shadow:2px 2px 0 rgba(0,0,0,.05);color:var(--main-color);display:flex;align-items:center;gap:6px;}
 .ver{font-size:14px;background:#fff;color:var(--main-color);padding:2px 8px;border-radius:10px;border:1px solid var(--sub-color);box-shadow:0 2px 4px rgba(0,0,0,.05);}
 
-/* 마법 복구 사이렌 효과 */
+/* 데이터 복구 사이렌 효과 */
 @keyframes siren {
   0% { background: #fff0f0; color: #e8453c; border-color: #e8453c; transform: scale(1); }
   50% { background: #e8453c; color: #fff; border-color: #e8453c; transform: scale(1.05); }
@@ -120,7 +120,7 @@ input.ti:focus{border-color:var(--main-color);}
 .car{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:8px;}
 .cni{font-family:"Poor Story",cursive;font-size:13px;border:2px solid var(--sub-color);border-radius:10px;padding:5px 10px;outline:none;width:120px;background:var(--input-bg);}
 .cni:focus{border-color:var(--main-color);}
-.pr{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px;max-width:100%;}
+.pr{display:flex;gap:5px;flex-wrap:margin-bottom:4px;max-width:100%;}
 .pd{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;flex-shrink:0;}
 .pd:hover{transform:scale(1.15);}
 .pd.sel{border-color:#333;transform:scale(1.15);}
@@ -208,6 +208,504 @@ input.ti:focus{border-color:var(--main-color);}
 .card-grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:10px; }
 @media(max-width:600px){ .card-grid { grid-template-columns: 1fr; } }
 </style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-actions">
+    <button class="btn-recover" onclick="magicRestore()">🪄 마법의 원클릭 복구</button>
+    <button onclick="copySyncLink()" style="padding:4px 8px; background:#fff; border:1.5px solid var(--main-color); color:var(--main-color); border-radius:8px; font-family:'Poor Story',cursive; font-size:11px; font-weight:700; cursor:pointer;">🔗 커플 연동</button>
+  </div>
+  <div class="header-title-row">
+    <span style="font-size:28px;">🍅🥔</span>
+    <h1>짠포마토의 기록 <span class="ver">v6.9</span></h1>
+  </div>
+  <div class="profile-switcher">
+    <button id="prof_zzanto" class="prof-btn active" onclick="switchProfile('zzanto')">🍅 짠토</button>
+    <button id="prof_jjangam" class="prof-btn" onclick="switchProfile('jjangam')">🥔 짠감</button>
+    <button id="prof_zzanpomato" class="prof-btn" onclick="switchProfile('zzanpomato')" style="background:#fff; color:#e07a5f; border-color:#f2cc8f;">🍅🥔 짠포마토</button>
+  </div>
+</div>
+
+<div id="individual_view" style="width:100%; max-width:1100px; display:flex; flex-direction:column; align-items:center; gap:16px;">
+  
+  <div class="tab-bar" id="tabbar">
+    <button class="tab-btn active" onclick="sw(0)">🏠 가계부</button>
+    <button class="tab-btn" onclick="sw(1)">💚 부수입</button>
+    <button class="tab-btn" onclick="sw(2)">💸 지출</button>
+    <button class="tab-btn" id="tab_btn_scoop" onclick="sw(3)">🥄 랜덤스쿱</button>
+    <button class="tab-btn" onclick="sw(4)">📈 저축/투자</button>
+    <button class="tab-btn" onclick="sw(5)">💼 자산 및 부채</button>
+    <button class="tab-btn" onclick="sw(6)">📅 리포트</button>
+  </div>
+
+  <div class="tab-page active" id="tp0">
+  <div class="ft">
+    <div class="mb">
+      <h2 id="tab0_title">🏠 가계부 요약</h2>
+      <select class="sc" id="lgy" onchange="rLedger()"></select>
+      <select class="sc" id="lgm" onchange="rLedger()"></select>
+    </div>
+    <div class="ledger-wrap">
+      <div class="ledger-chart-box">
+        <div class="ledger-chart-title">총 수입</div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div class="dw"><canvas id="lgdc1" width="140" height="140"></canvas>
+            <div class="dc"><div class="dl2">총수입</div><div class="dv" id="lgdv1">₩0</div></div></div>
+          <div class="ll2" id="lgl1"></div>
+        </div>
+      </div>
+      <div class="ledger-chart-box">
+        <div class="ledger-chart-title">총 지출/저축/투자</div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div class="dw"><canvas id="lgdc2" width="140" height="140"></canvas>
+            <div class="dc"><div class="dl2">지출/저축</div><div class="dv" id="lgdv2">₩0</div></div></div>
+          <div class="ll2" id="lgl2"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ledger-table-wrap">
+      <table class="lt" id="lgtbl">
+        <thead><tr><th style="width:180px">항목</th><th>금액</th><th style="width:140px">메모/상태</th></tr></thead>
+        <tbody id="lgtbody"></tbody>
+      </table>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" id="lggoalrow">
+      <div class="as-goal-box">
+        <div class="as-goal-label">목표 예산 (지출 기준)</div>
+        <input class="as-goal-input" id="lggoal" value="500000" oninput="fmtInp(this); rLedger();">
+      </div>
+      <div class="as-goal-box">
+        <div class="as-goal-label">이번달 잔액</div>
+        <div class="as-goal-value" id="lgbal">₩0</div>
+      </div>
+      <div class="as-goal-box">
+        <div class="as-goal-label">경고</div>
+        <div id="lgwarn" style="font-size:13px;font-weight:700;color:#2e7d32;">✅ 안전지대</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="ws">
+        <div class="wt">🔥 이번달 과소비 BEST3</div>
+        <div id="lgover3" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+      <div class="ws">
+        <div class="wt">💡 다음 달 꼭 지킬 소비 약속</div>
+        <textarea id="lgpromise" style="width:100%;border:2px solid var(--sub-color);border-radius:10px;font-family:'Poor Story',cursive;font-size:13px;padding:8px;resize:vertical;outline:none;min-height:80px;background:var(--input-bg);" placeholder="자유롭게 적어보세요..."></textarea>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab-page" id="tp1">
+  <div class="ft">
+    <div class="mb">
+      <h2>💚 부수입 기록</h2>
+      <select class="sc" id="iy" onchange="imc()"></select>
+      <select class="sc" id="im" onchange="imc()"></select>
+      <span class="pill" id="ipill">₩0</span>
+    </div>
+    <div class="cs"><h3>📊 분류별 수입 현황</h3>
+      <div class="crow">
+        <div class="dw"><canvas id="idc" width="160" height="160"></canvas>
+          <div class="dc"><div class="dl2">총 수입</div><div class="dv" id="idv">₩0</div></div></div>
+        <div class="ll2" id="il"></div>
+      </div>
+    </div>
+    <div class="cm"><h3>🏷 분류 관리 <span style="font-size:11px;color:var(--text-muted);">(최대 15개)</span></h3>
+      <div class="cw" id="ichips"></div>
+      <div class="car">
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">색상</div><div class="pr" id="ipal"></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">분류명</div><input class="cni" id="icni" placeholder="입력" maxlength="10"></div>
+        <button class="cac" onclick="addCat('i')">＋ 추가</button>
+        <span style="font-size:11px;color:var(--text-muted);" id="icnt"></span>
+      </div>
+    </div>
+    <div class="fs">
+      <div class="fbar">
+        <span class="fl">분류 필터:</span>
+        <div id="ifb" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        <span class="fl" style="margin-left:auto;">날짜 검색:</span>
+        <input class="cni" id="iDateFil" style="width:70px; padding:3px 8px; height:26px;" placeholder="예: 15" oninput="rInc()">
+      </div>
+    </div>
+    <div>
+      <div class="stit"><h3>📌 상시 수입</h3><span class="stag">매달 있는 항목</span></div>
+      <div class="dtw"><table class="dt"><thead><tr><th style="width:120px">분류</th><th>내용</th><th style="width:130px">금액 (원)</th><th style="width:44px">삭제</th></tr></thead><tbody id="ifb2"></tbody></table>
+        <button class="arb" onclick="aFR()">＋ 상시 항목 추가</button></div>
+    </div>
+    <div>
+      <div class="stit"><h3>📅 날짜별 수입</h3><span class="stag" id="idtag">날짜별</span>
+        <button class="bsm" style="margin-left:auto;" onclick="sortDated('i')">⬇️ 날짜순 정렬</button>
+      </div>
+      <div class="dtw"><table class="dt"><thead><tr><th style="width:70px">날짜</th><th style="width:120px">분류</th><th>내용</th><th style="width:130px">금액 (원)</th><th style="width:44px">삭제</th></tr></thead><tbody id="idb"></tbody></table>
+        <button class="arb" onclick="aDR()">＋ 날짜별 항목 추가</button></div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab-page" id="tp2">
+  <div class="ft">
+    <div class="mb">
+      <h2>💸 지출 기록</h2>
+      <select class="sc" id="ey" onchange="emc()"></select>
+      <select class="sc" id="em" onchange="emc()"></select>
+      <span class="pill" id="epill">₩0</span>
+    </div>
+    <div class="cs"><h3>📊 분류별 지출 현황</h3>
+      <div class="crow">
+        <div class="dw"><canvas id="edc" width="160" height="160"></canvas>
+          <div class="dc"><div class="dl2">총 지출</div><div class="dv" id="edv">₩0</div></div></div>
+        <div class="ll2" id="el"></div>
+      </div>
+    </div>
+    <div class="cm"><h3>🏷 분류 관리 <span style="font-size:11px;color:var(--text-muted);">(최대 15개)</span></h3>
+      <div class="cw" id="echips"></div>
+      <div class="car">
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">색상</div><div class="pr" id="epal"></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">분류명</div><input class="cni" id="ecni" placeholder="입력" maxlength="10"></div>
+        <button class="cac" onclick="addCat('e')">＋ 추가</button>
+        <span style="font-size:11px;color:var(--text-muted);" id="ecnt"></span>
+      </div>
+    </div>
+    <div class="fs">
+      <div class="fbar">
+        <span class="fl">분류 필터:</span>
+        <div id="efb" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        <span class="fl" style="margin-left:auto;">날짜 검색:</span>
+        <input class="cni" id="eDateFil" style="width:70px; padding:3px 8px; height:26px;" placeholder="예: 15" oninput="rExp()">
+      </div>
+    </div>
+    <div>
+      <div class="stit"><h3>📌 고정 지출</h3><span class="stag">매달 나가는 항목</span></div>
+      <div class="dtw"><table class="dt"><thead><tr><th style="width:120px">분류</th><th>내용</th><th style="width:130px">금액 (원)</th><th style="width:70px">과소비</th><th style="width:44px">삭제</th></tr></thead><tbody id="efb2"></tbody></table>
+        <button class="arb" onclick="aEF()">＋ 고정 지출 추가</button></div>
+    </div>
+    <div>
+      <div class="stit"><h3>📅 날짜별 지출</h3><span class="stag" id="edtag">날짜별</span>
+        <button class="bsm" style="margin-left:auto;" onclick="sortDated('e')">⬇️ 날짜순 정렬</button>
+      </div>
+      <div class="dtw"><table class="dt"><thead><tr><th style="width:70px">날짜</th><th style="width:120px">분류</th><th>내용</th><th style="width:130px">금액 (원)</th><th style="width:70px">과소비</th><th style="width:44px">삭제</th></tr></thead><tbody id="edb"></tbody></table>
+        <button class="arb" onclick="aED()">＋ 날짜별 지출 추가</button></div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab-page" id="tp3">
+  <div class="ft">
+    <div class="mb">
+      <h2>🥄 랜덤스쿱 저축</h2>
+      <select class="sc" id="scy" onchange="onSP()"></select>
+      <select class="sc" id="scm" onchange="onSP()"></select>
+      <span class="pill" id="scpill">월 총 ₩0</span>
+      <button class="sav" onclick="oSM()">📸 카드 저장</button>
+    </div>
+    <div class="panel">
+      <div class="pt">📋 랜덤스쿱 규칙</div>
+      <div style="overflow-x:auto;"><table class="te" id="rtbl" style="min-width:200px;"></table></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="bsm" onclick="aRR()">＋ 행</button>
+        <button class="bsm" onclick="rRR()">－ 행</button>
+      </div>
+    </div>
+    <div id="scwrap" style="display:flex;flex-direction:column;gap:14px;"></div>
+  </div>
+  </div>
+
+  <div class="tab-page" id="tp4">
+  <div class="ft">
+    <div class="mb">
+      <h2>📈 저축/투자 내역</h2>
+      <select class="sc" id="nvy" onchange="onNP()"></select>
+      <select class="sc" id="nvm" onchange="onNP()"></select>
+      <span class="pill nv-auto-sum-disp" id="nvpill">총 저축/투자 ₩0</span>
+    </div>
+    
+    <div class="cm" style="margin-bottom:4px;">
+      <h3>🏷 대분류 관리 <span style="font-size:11px;color:var(--text-muted);">(최대 10개)</span></h3>
+      <div class="cw" id="nvchips"></div>
+      <div class="car">
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">색상</div><div class="pr" id="nvpal"></div></div>
+        <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">분류명</div><input class="cni" id="nvcni" placeholder="입력" maxlength="10"></div>
+        <button class="cac" onclick="addCat('nv')">＋ 추가</button>
+        <span style="font-size:11px;color:var(--text-muted);" id="nvcnt"></span>
+      </div>
+    </div>
+    <div id="nvwrap" style="display:flex;flex-direction:column;gap:14px;"></div>
+  </div>
+  </div>
+
+  <div class="tab-page" id="tp5">
+  <div class="ft">
+    <div class="mb">
+      <h2 id="tab4_title">💼 자산 및 부채 현황</h2>
+    </div>
+    <div class="as-goal-row" style="grid-template-columns: 1fr 1fr 1fr;">
+      <div class="as-goal-box">
+        <div class="as-goal-label">💰 총 자산 (내돈+은행돈)</div>
+        <div class="as-goal-value" id="as_tot_assets">₩0</div>
+      </div>
+      <div class="as-goal-box" style="background:#fff0f0; border-color:#ffb3ba;">
+        <div class="as-goal-label" style="color:#e8453c;">⚠️ 총 부채 (빌린돈)</div>
+        <div class="as-goal-value" id="as_tot_liabs" style="color:#e8453c;">₩0</div>
+      </div>
+      <div class="as-goal-box" style="background:#e8f5e9; border-color:#baffc9;">
+        <div class="as-goal-label" style="color:#2e7d32;">✨ 진짜 내 돈 (순자산)</div>
+        <div class="as-goal-value" id="as_net_worth" style="color:#2e7d32; font-size:22px;">₩0</div>
+      </div>
+    </div>
+
+    <div class="ag">
+      <div class="ws">
+        <div class="wt">📊 총 자산 비율</div>
+        <div class="crow" style="margin-bottom:12px;">
+          <div class="dw"><canvas id="asdc1" width="140" height="140"></canvas>
+            <div class="dc"><div class="dl2">총 자산</div><div class="dv" id="asdv1">₩0</div></div></div>
+          <div class="ll2" id="asl1"></div>
+        </div>
+      </div>
+      <div class="ws">
+        <div class="wt">📊 주식/투자 소분류</div>
+        <div class="crow" style="margin-bottom:12px;">
+          <div class="dw"><canvas id="asdc2" width="140" height="140"></canvas>
+            <div class="dc"><div class="dl2">투자 합계</div><div class="dv" id="asdv2">₩0</div></div></div>
+          <div class="ll2" id="asl2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cm">
+      <h3>분류 관리 (자산 탭 전용)</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="bsm" onclick="document.getElementById('cat_mgmt').style.display='block'">⚙️ 자산 분류 설정 열기</button>
+        <button class="bsm" onclick="document.getElementById('cat_mgmt').style.display='none'">닫기</button>
+      </div>
+      <div id="cat_mgmt" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed var(--sub-color);">
+        <div class="stit">대분류 (최대 10개)</div>
+        <div class="cw" id="nsachips"></div>
+        <div class="car">
+          <div class="pr" id="nsapal"></div>
+          <input class="cni" id="nsacni" placeholder="분류명"><button class="cac" onclick="addNsaCatUI()">＋</button>
+        </div>
+        <div class="stit" style="margin-top:10px;">중분류 (최대 30개)</div>
+        <div class="cw" id="midchips"></div>
+        <div class="car">
+          <div class="pr" id="midpal"></div>
+          <input class="cni" id="midcni" placeholder="분류명"><button class="cac" onclick="addMidCatUI()">＋</button>
+        </div>
+        <div class="stit" style="margin-top:10px;">소분류 (최대 10개)</div>
+        <div class="cw" id="subchips"></div>
+        <div class="car">
+          <div class="pr" id="subpal"></div>
+          <input class="cni" id="subcni" placeholder="분류명"><button class="cac" onclick="addSubCatUI()">＋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ws" style="margin-top:16px;">
+      <div class="wt">💰 현금 및 저축 자산
+        <button class="bsm" onclick="aCash()" style="margin-left:auto;">＋ 자산 추가</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="dt" style="min-width:560px;">
+          <thead><tr>
+            <th style="width:130px">대분류</th>
+            <th style="width:130px">중분류</th>
+            <th>종목(내용)</th>
+            <th style="width:130px">금액 (원)</th>
+            <th style="width:44px">삭제</th>
+          </tr></thead>
+          <tbody id="cashtb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ws" style="margin-top:16px;">
+      <div class="wt">📈 주식 상세 종목
+        <button class="bsm" onclick="aAD()" style="margin-left:auto;">＋ 종목 추가</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="dt" style="min-width:680px;">
+          <thead><tr>
+            <th style="width:110px">대분류</th>
+            <th style="width:110px">중분류</th>
+            <th style="width:110px">소분류</th>
+            <th>종목</th>
+            <th style="width:55px">주수</th>
+            <th style="width:130px">금액 (원)</th>
+            <th style="width:44px">삭제</th>
+          </tr></thead>
+          <tbody id="asdtb"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ws" style="margin-top:16px; border:2px solid #ffb3ba; background:#fff9f9;">
+      <div class="wt" style="color:#e8453c;">⚠️ 부채 (대출) 내역
+        <button class="bsm" onclick="aLiab()" style="margin-left:auto; background:#ffe0e0; color:#e8453c;">＋ 부채 추가</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="dt" style="min-width:400px;">
+          <thead><tr style="background:#fff0f0;"><th style="color:#e8453c;">대출/부채 내용</th><th style="width:150px; color:#e8453c;">금액 (원)</th><th style="width:44px">삭제</th></tr></thead>
+          <tbody id="liabtb"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div class="tab-page" id="tp6">
+  <div class="ft">
+    <div class="mb">
+      <h2>📅 연간 리포트</h2>
+      <select class="sc" id="ry" onchange="rReport()"></select>
+    </div>
+    <div class="as-goal-row" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+      <div class="as-goal-box"><div class="as-goal-label">연간 총 수입</div><div class="as-goal-value" id="r_tot_inc">₩0</div></div>
+      <div class="as-goal-box"><div class="as-goal-label">연간 총 지출</div><div class="as-goal-value" id="r_tot_exp">₩0</div></div>
+      <div class="as-goal-box"><div class="as-goal-label">연간 총 저축/투자</div><div class="as-goal-value" id="r_tot_sav">₩0</div></div>
+      <div class="as-goal-box"><div class="as-goal-label">연간 잔액</div><div class="as-goal-value" id="r_tot_bal">₩0</div></div>
+    </div>
+    <div class="ws">
+      <div class="wt">📊 월별 수입/지출/저축 추이</div>
+      <div style="width:100%; max-width:1000px; margin:0 auto;"><canvas id="rChart1"></canvas></div>
+    </div>
+    <div class="ws">
+      <div class="wt">📈 월별 잔액 추이</div>
+      <div style="width:100%; max-width:1000px; margin:0 auto;"><canvas id="rChart2"></canvas></div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div id="zzanpomato_view" style="display:none; width:100%; max-width:1100px; flex-direction:column; gap:16px;">
+  
+  <div class="mb" style="display:flex; flex-direction:column; align-items:flex-start; gap:16px;">
+    <h2 style="font-size:22px; color:var(--main-color);">🍅🥔 우리의 공동 목표</h2>
+    <div class="as-goal-row" style="width:100%; grid-template-columns: 1fr 1fr;">
+      <div class="as-goal-box">
+        <div class="as-goal-label">🍅 짠토 개인 목표 금액 (원)</div>
+        <input class="as-goal-input" id="jp_goal_zzanto" placeholder="예: 100000000" oninput="fmtInp(this)" style="color:#e8453c;">
+      </div>
+      <div class="as-goal-box">
+        <div class="as-goal-label">🥔 짠감 개인 목표 금액 (원)</div>
+        <input class="as-goal-input" id="jp_goal_jjangam" placeholder="예: 30000000" oninput="fmtInp(this)" style="color:#a67c52;">
+      </div>
+      <div class="as-goal-box">
+        <div class="as-goal-label">공동 목표 이름</div>
+        <input class="as-goal-input" id="jp_goal_title" placeholder="예: 신혼집 마련 🏠" style="color:var(--main-color);">
+      </div>
+      <div class="as-goal-box">
+        <div class="as-goal-label">공동 목표 금액 (원)</div>
+        <input class="as-goal-input" id="jp_goal_amount" placeholder="예: 130000000" oninput="fmtInp(this)" style="color:var(--main-color);">
+      </div>
+    </div>
+    <button class="sav" style="width:100%; padding:14px; font-size:15px; border-radius:12px;" onclick="saveZzanpomatoGoal()">목표 저장하기</button>
+  </div>
+
+  <div class="ws">
+    <div class="wt" style="font-size:18px;">🚀 우리의 여정 (순자산 기준)</div>
+    
+    <div style="margin-top:20px;">
+      <div style="display:flex; justify-content:space-between; font-size:14px;">
+        <span style="font-weight:700; color:#e8453c;">🍅 짠토 달성률</span>
+        <span id="jp_prog_z_txt" style="font-weight:700; color:#e8453c;">0%</span>
+      </div>
+      <div class="joint-prog-bg" style="height:18px; border-color:#fddcdc; background:#fff0f0;">
+        <div id="jp_prog_z_bar" class="joint-prog-bar" style="background:#e8453c;"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <div style="display:flex; justify-content:space-between; font-size:14px;">
+        <span style="font-weight:700; color:#a67c52;">🥔 짠감 달성률</span>
+        <span id="jp_prog_j_txt" style="font-weight:700; color:#a67c52;">0%</span>
+      </div>
+      <div class="joint-prog-bg" style="height:18px; border-color:#e6d5c3; background:#f0e6d8;">
+        <div id="jp_prog_j_bar" class="joint-prog-bar" style="background:#a67c52;"></div>
+      </div>
+    </div>
+
+    <hr style="border:0; border-top:2px dashed var(--sub-color); margin: 24px 0;">
+
+    <div style="font-size:26px; font-weight:700; color:var(--main-color); text-align:center;" id="jp_total_networth">현재 순자산 합계: ₩0</div>
+    
+    <div style="display:flex; justify-content:space-between; margin-top:20px; font-size:14px;">
+      <span style="font-weight:700; color:var(--text-muted);" id="jp_goal_name_disp">공동 목표 달성률</span>
+      <span id="jp_progress_txt" style="font-weight:700; color:var(--main-color); font-size:18px;">0%</span>
+    </div>
+    <div class="joint-prog-bg" style="height:32px; border-width: 3px;">
+      <div id="jp_progress_bar" class="joint-prog-bar"></div>
+    </div>
+  </div>
+
+  <div class="mb" style="margin-top:10px;">
+    <h2 style="font-size:20px; color:var(--main-color);">🗓️ 월별 합산 대시보드</h2>
+    <select class="sc" id="jp_y" onchange="rZzanpomatoDashboard()"></select>
+    <select class="sc" id="jp_m" onchange="rZzanpomatoDashboard()"></select>
+  </div>
+
+  <div class="card-grid">
+    <div class="ws">
+      <div class="wt">💚 이번 달 총 수입</div>
+      <div style="font-size:22px; font-weight:700; margin-bottom:12px; color:#2e7d32;" id="jp_m_inc">₩0</div>
+      <div style="font-size:14px; color:var(--text-muted); display:flex; justify-content:space-between;">
+        <span>🍅 짠토:</span> <span id="jp_m_inc_z" style="font-weight:700; color:#3a1a1a;">₩0</span>
+      </div>
+      <div style="font-size:14px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:4px;">
+        <span>🥔 짠감:</span> <span id="jp_m_inc_j" style="font-weight:700; color:#3e2723;">₩0</span>
+      </div>
+    </div>
+    <div class="ws">
+      <div class="wt" style="color:#e8453c;">💸 이번 달 총 지출</div>
+      <div style="font-size:22px; font-weight:700; margin-bottom:12px; color:#e8453c;" id="jp_m_exp">₩0</div>
+      <div style="font-size:14px; color:var(--text-muted); display:flex; justify-content:space-between;">
+        <span>🍅 짠토:</span> <span id="jp_m_exp_z" style="font-weight:700; color:#3a1a1a;">₩0</span>
+      </div>
+      <div style="font-size:14px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:4px;">
+        <span>🥔 짠감:</span> <span id="jp_m_exp_j" style="font-weight:700; color:#3e2723;">₩0</span>
+      </div>
+    </div>
+    <div class="ws">
+      <div class="wt" style="color:#a67c52;">📈 이번 달 총 저축/투자</div>
+      <div style="font-size:22px; font-weight:700; margin-bottom:12px; color:#a67c52;" id="jp_m_inv">₩0</div>
+      <div style="font-size:14px; color:var(--text-muted); display:flex; justify-content:space-between;">
+        <span>🍅 짠토:</span> <span id="jp_m_inv_z" style="font-weight:700; color:#3a1a1a;">₩0</span>
+      </div>
+      <div style="font-size:14px; color:var(--text-muted); display:flex; justify-content:space-between; margin-top:4px;">
+        <span>🥔 짠감:</span> <span id="jp_m_inv_j" style="font-weight:700; color:#3e2723;">₩0</span>
+      </div>
+    </div>
+    <div class="ws" style="background:var(--sub-bg);">
+      <div class="wt" style="color:var(--main-color);">✨ 이달의 잉여 자금 (수입-지출)</div>
+      <div style="font-size:26px; font-weight:700; color:var(--main-color); margin-top:10px;" id="jp_m_bal">₩0</div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">두 분이 이번 달에 남긴 순수 여윳돈입니다!</div>
+    </div>
+  </div>
+</div>
+
+<div class="mo" id="scmo">
+  <div class="mb2">
+    <div class="mt2">📸 랜덤스쿱 카드 저장</div>
+    <div class="mrb">
+      <button class="active" id="smr1" onclick="sSR(this,'1/1')">1:1</button>
+      <button id="smr2" onclick="sSR(this,'4/5')">4:5</button>
+      <button id="smr3" onclick="sSR(this,'9/16')">9:16</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="fc active" id="sw0" onclick="sSW(this,0)">전체 요약</button>
+      <button class="fc" id="sw1" onclick="sSW(this,1)">1주차</button>
+      <button class="fc" id="sw2" onclick="sSW(this,2)">2주차</button>
+      <button class="fc" id="sw3" onclick="sSW(this,3)">3주차</button>
+      <button class="fc" id="sw4" onclick="sSW(this,4)">4주차</button>
+    </div>
+    <div class="mf" id="scmf"><div class="mc" id="scmc"></div></div>
+    <div class="mbs">
+      <button class="mcl" onclick="document.getElementById('scmo').classList.remove('open')">닫기</button>
+      <button style="background:linear-gradient(135deg,var(--main-color),var(--main-grad-2));color:#fff;" id="scdl" onclick="dSC()">📸 PNG 저장</button>
+    </div>
+  </div>
+</div>
 
 <script id="backup-data" type="application/json">
 {
@@ -678,6 +1176,18 @@ input.ti:focus{border-color:var(--main-color);}
             { "label": "총 금액 💰", "vals": [ "21000", "32000", "29000", "45000", "31000", "", "" ] }
           ],
           "weekTotal": 158000
+        },
+        "w2": {
+          "dateRange": "8/8~8/14",
+          "rows": [
+            { "label": "달성률 ✨", "vals": [ "", "", "", "", "", "", "" ] },
+            { "label": "스쿱 🥄", "vals": [ "", "", "", "", "", "", "" ] },
+            { "label": "보너스 🍀", "vals": [ "", "", "", "", "", "", "" ] },
+            { "label": "보너스 🍅", "vals": [ "", "", "", "", "", "", "" ] },
+            { "label": "큰파츠 💎", "vals": [ "", "", "", "", "", "", "" ] },
+            { "label": "총 금액 💰", "vals": [ "", "", "", "", "", "", "" ] }
+          ],
+          "weekTotal": ""
         }
       }
     }
@@ -719,14 +1229,7 @@ const firebaseConfig = {
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 window.db = firebase.database();
 
-function ensureArr(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.filter(v => v !== null && typeof v === 'object');
-  if (typeof val === 'object') return Object.values(val).filter(v => v !== null && typeof v === 'object');
-  return [];
-}
-
-// 🚨 [가장 확실한 100% 원클릭 마법 복구 함수]
+/* 🚨 100% 원클릭 마법 복구 함수 🚨 */
 window.magicRestore = function() {
   try {
     let raw = document.getElementById("backup-data").textContent;
@@ -834,15 +1337,15 @@ function switchProfile(p) {
     bZ.style.background="var(--main-color)"; bZ.style.color="#fff";
     document.getElementById('tab0_title').textContent = "🏠 짠토의 가계부 요약";
     document.getElementById('tab4_title').textContent = "💼 짠토의 자산 및 부채 현황";
-    btnScoop.style.display = 'inline-block'; // 짠토는 스쿱 보임
+    btnScoop.style.display = 'inline-block'; 
   } else {
     document.body.className = 'jjangam';
     bJ.classList.add('active');
     bJ.style.background="var(--main-color)"; bJ.style.color="#fff";
     document.getElementById('tab0_title').textContent = "🏠 짠감의 가계부 요약";
     document.getElementById('tab4_title').textContent = "💼 짠감의 자산 및 부채 현황";
-    btnScoop.style.display = 'none'; // 짠감은 스쿱 숨김
-    if(currentTab === 3) currentTab = 0; // 스쿱 탭에 있었다면 가계부로 자동 이동
+    btnScoop.style.display = 'none'; 
+    if(currentTab === 3) currentTab = 0; 
   }
   
   iD = appData[p].iD; eD = appData[p].eD; lgD = appData[p].lgD; nvD = appData[p].nvD; asD = appData[p].asD; 
