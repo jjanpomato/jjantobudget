@@ -213,7 +213,7 @@ input.ti:focus{border-color:var(--main-color);}
 
 <div class="app-header">
   <div class="header-actions">
-    <button class="btn-recover" onclick="emergencyRecover()">🚑 데이터 타임머신 복구</button>
+    <button class="btn-recover" onclick="document.getElementById('restore_mo').classList.add('open')">🚑 데이터 직접 복구</button>
     <button onclick="copySyncLink()" style="padding:4px 8px; background:#fff; border:1.5px solid var(--main-color); color:var(--main-color); border-radius:8px; font-family:'Poor Story',cursive; font-size:11px; font-weight:700; cursor:pointer;">🔗 커플 연동</button>
   </div>
   <div class="header-title-row">
@@ -371,7 +371,7 @@ input.ti:focus{border-color:var(--main-color);}
     <div class="fs">
       <div class="fbar">
         <span class="fl">분류 필터:</span>
-        <div id="efb" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+        <div id="ifb" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
         <span class="fl" style="margin-left:auto;">날짜 검색:</span>
         <input class="cni" id="eDateFil" style="width:70px; padding:3px 8px; height:26px;" placeholder="예: 15" oninput="rExp()">
       </div>
@@ -707,6 +707,18 @@ input.ti:focus{border-color:var(--main-color);}
   </div>
 </div>
 
+<div class="mo" id="restore_mo">
+  <div class="mb2">
+    <div class="mt2" style="color:var(--main-color);">🚑 데이터 직접 복구</div>
+    <div style="font-size:13px; color:var(--text-muted);">채팅창에 보내주셨던 <b>=== 전체 데이터 백업본 ===</b> 아래의 { } 전체 텍스트를 아래 빈칸에 복사해서 붙여넣어주세요!</div>
+    <textarea id="restore_input" style="width:100%; height:200px; border:2px solid var(--sub-color); border-radius:8px; padding:8px; outline:none; font-family:monospace; font-size:11px;" placeholder="{ 'asD': { ... } }"></textarea>
+    <div class="mbs">
+      <button class="mcl" onclick="document.getElementById('restore_mo').classList.remove('open')">닫기</button>
+      <button style="background:var(--main-color);color:#fff;" onclick="executeRestore()">강제 복구 실행하기</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================= 데이터 구조 및 복구 ================= */
 let mySyncKey = localStorage.getItem("syncKey") || 'zzanpomato-' + Math.random().toString(36).substr(2, 9);
@@ -729,7 +741,6 @@ let appData = {
 
 let activeProfile = 'zzanto'; 
 let currentTab = 0;
-
 let iD, eD, lgD, nvD, scD, asD, iCats, eCats, nvCats;
 
 const firebaseConfig = {
@@ -750,34 +761,46 @@ function ensureArr(val) {
   return [];
 }
 
-// 🚨 [핵심] 휴대폰에 남은 100% 원본 데이터를 강제로 덮어씌우는 타임머신 함수
-window.emergencyRecover = function() {
-  let recoveredCount = 0;
-  let lsKeys = ['iD', 'eD', 'lgD', 'nvD', 'scD', 'asD'];
+// 🚨 [가장 확실한 100% 강제 수동 복구 함수]
+window.executeRestore = function() {
+  let val = document.getElementById("restore_input").value.trim();
+  if(!val) { alert("채팅창에 보내주셨던 텍스트를 빈칸에 붙여넣어주세요!"); return; }
   
-  lsKeys.forEach(k => {
-    let lsStr = localStorage.getItem(k);
-    if (!lsStr || lsStr === '{}' || lsStr === 'null') return;
+  try {
+    let parsed = JSON.parse(val);
+    let count = 0;
+    const keys = ['iD', 'eD', 'lgD', 'nvD', 'scD', 'asD', 'iCats', 'eCats', 'nvCats'];
     
-    // 조건 따지지 않고 그냥 100% 덮어쓰기!! (이게 가장 안전합니다)
-    appData.zzanto[k] = JSON.parse(lsStr);
-    recoveredCount++;
-  });
-  
-  ['iCats', 'eCats', 'nvCats'].forEach(k => {
-     let lsStr = localStorage.getItem(k);
-     if (lsStr && lsStr !== '[]' && lsStr !== 'null') {
-         appData.zzanto[k] = JSON.parse(lsStr);
-         recoveredCount++;
-     }
-  });
-  
-  if (recoveredCount > 0) {
-      if (isFirebaseLoaded) db.ref("users/" + mySyncKey + "/zzanto").set(appData.zzanto);
-      alert("✨ 잃어버렸던 원본 데이터(8월, 저축, 스쿱 등)를 내 휴대폰에서 찾아 완벽하게 복구했습니다! 🍅");
-      location.reload();
-  } else {
-      alert("💡 이미 모든 데이터가 복구되었거나 로컬에 원본이 없습니다.");
+    // 1. 보내주신 데이터처럼 최상단에 있는 경우 짠토 프로필로 강제 복사
+    keys.forEach(k => {
+      if (parsed[k]) {
+        appData.zzanto[k] = parsed[k];
+        count++;
+      }
+    });
+    
+    // 2. 이미 zzanto 폴더 안에 있는 경우도 대비
+    if (parsed.zzanto) {
+      keys.forEach(k => {
+        if (parsed.zzanto[k]) {
+          appData.zzanto[k] = parsed.zzanto[k];
+          count++;
+        }
+      });
+    }
+    
+    if (count > 0) {
+      if (isFirebaseLoaded) {
+        db.ref("users/" + mySyncKey + "/zzanto").set(appData.zzanto).then(() => {
+          alert("🎉 잃어버렸던 원본 데이터가 단 1원도 빠짐없이 100% 짠토 방으로 복원되었습니다!");
+          location.reload();
+        });
+      }
+    } else {
+      alert("붙여넣으신 텍스트에서 가계부 데이터를 찾을 수 없습니다.");
+    }
+  } catch(e) {
+    alert("입력하신 텍스트의 형식이 올바르지 않습니다. 처음 { 부터 끝부분 } 까지 괄호가 모두 잘 복사되었는지 확인해주세요!\n\n오류: " + e.message);
   }
 };
 
